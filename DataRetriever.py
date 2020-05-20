@@ -7,7 +7,7 @@ from stockstats import StockDataFrame
 from tapy import Indicators
 
 from indicators.MyAdx import ADXStrength
-from indicators.adx import adx
+from indicators.adx import adx, average_directional_movement_index
 from indicators.coppock import coppock
 from indicators.psar import psar, sar
 from ta.trend import ADXIndicator
@@ -69,6 +69,7 @@ class DataRetriever(ABC):
         indicators.awesome_oscillator()
         indicators.macd()
         indicators.momentum()
+        indicators.bollinger_bands()
 
         df['macd_value'] = pd.to_numeric(indicators.df['macd_value'], downcast="float")
         df['macd_signal'] = pd.to_numeric(indicators.df['macd_signal'], downcast="float")
@@ -77,12 +78,15 @@ class DataRetriever(ABC):
         df['momentum'] = indicators.df['momentum']
         df['coppock'] = coppock(df["Close"])
         df['SAR'] = psar(df)
+        df['bollinger_top'] = indicators.df['bollinger_top']
+        df['bollinger_bottom'] = indicators.df['bollinger_bottom']
+        df['bollinger_mid'] = indicators.df['bollinger_mid']
 
         # stock = StockDataFrame.retype(df.copy())
         adxI = ADXIndicator(df["High"], df["Low"], df["Close"], 14, False)
         df['pos_directional_indicator'] = adxI.adx_pos()
         df['neg_directional_indicator'] = adxI.adx_neg()
-        df['adx'] = ADXStrength(df["High"], df["Low"], df["Close"])
+        df['adx'] = average_directional_movement_index(df.copy(), 14, 14)
         tupleTSI = tsi(df["Close"])
         df['tsi'] = tupleTSI[0]
         df['ematsi'] = tupleTSI[1]
@@ -91,6 +95,9 @@ class DataRetriever(ABC):
         df['tauxtsi'] = 100*(tupleTSI[0] - tsibefore)/abs(tsibefore)
 
         df.set_index('opentime', inplace=True)
+
+        df.to_csv(symbol+".csv", index=True)
+
         # df.set_index('opentime', inplace=True)
         # df.reset_index(inplace=True)
         # df.set_index(["opentime", "symbol"], inplace=True)

@@ -25,8 +25,8 @@ def showAll(df, withbuysell, filename):
     # plot macd strategy
     p.line(df.index, 0, color='black')
     p.line(df.index, 20, color='black')
-    p.line(df.index, 5000+df.tsi, color='blue')
-    # p.line(df.index, df.adx, color='blue')
+    #p.line(df.index, 5000+df.tsi, color='blue')
+    p.line(df.index, df.adx, color='blue')
     # p.line(df.index, df.macd_signal, color='orange')
     # p.vbar(x=df.index, bottom=[
     #     0 for _ in df.index], top=df.ao, width=4, color="purple")

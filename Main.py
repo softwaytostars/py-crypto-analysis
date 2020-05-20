@@ -326,7 +326,6 @@ for opentime in opentimevalues:
 
 
     # print(datetime.datetime.fromtimestamp(opentime).isoformat())
-    print(opentime)
     ordermaker.printOrders()
     ordermaker.executeOrders()
     print('wallet :')

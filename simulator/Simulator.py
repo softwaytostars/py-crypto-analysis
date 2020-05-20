@@ -91,7 +91,8 @@ class Simulator(object):
                              'macd_value': [],
                              'macd_signal': [],
                              'tauxtsi': [],
-                             'tsi': []
+                             'tsi': [],
+                             'adx': []
                              }
 
         weekOpentimevalues = self.dataWeekFrame.index.get_level_values('opentime')
@@ -127,6 +128,7 @@ class Simulator(object):
                     dictBuySellOrders['macd_signal'].append(-100)
                     dictBuySellOrders['tauxtsi'].append(-100)
                     dictBuySellOrders['tsi'].append(-100)
+                    dictBuySellOrders['adx'].append(-100)
                     continue
 
                 # ce sont les providers qui donneront ca
@@ -136,8 +138,13 @@ class Simulator(object):
                 dataDayEvaluation = self.dataDayFrame.loc[
                     self.dataDayFrame.index.get_level_values('opentime') < lastdayopentime]
 
-                date = str(dataDayEvaluation['datetime'].tail(1).values[0])
-                period = self.getPeriodCheck(date, yearCheckWallets)
+                currentDayData = self.dataDayFrame.loc[
+                    self.dataDayFrame.index.get_level_values('opentime') == lastdayopentime]
+                currentPrice = currentDayData['Open'].tail(1).values[0]  # TODO should be true currentprice instead if not simu
+                currendDate = str(currentDayData['datetime'].tail(1).values[0])
+
+
+                period = self.getPeriodCheck(currendDate, yearCheckWallets)
                 if period is not None and (previousPeriod is None or period != previousPeriod):
                     dictWalletsByYear[period] = BilanWallet(period, wallet.copy(), dataDayEvaluation.copy())
                     if previousPeriod is not None:
@@ -146,8 +153,7 @@ class Simulator(object):
                 lastDataForDay = dataDayEvaluation.copy()
 
                 # calcul de l'algo
-                (buyOrders, sellOrders) = algo.compute(dataWeekEvaluation, dataDayEvaluation, lastweekopentime,
-                                                       lastdayopentime)
+                (buyOrders, sellOrders) = algo.compute(dataWeekEvaluation, dataDayEvaluation, currentPrice,  currendDate)
 
                 # self.assertTrue(len(buyOrders) <= 1)
                 # self.assertTrue(len(sellOrders) <= 1)
@@ -161,6 +167,7 @@ class Simulator(object):
                 dictBuySellOrders['macd_signal'].append(dataForDay['macd_signal'].values[0])
                 dictBuySellOrders['tauxtsi'].append(dataForDay['tauxtsi'].values[0])
                 dictBuySellOrders['tsi'].append(dataForDay['tsi'].values[0])
+                dictBuySellOrders['adx'].append(dataForDay['adx'].values[0])
                 if len(buyOrders) >= 1:
                     dictBuySellOrders['buy'].append(buyOrders[0].getPrice())
                 else:
@@ -199,5 +206,5 @@ class Simulator(object):
             result.append(dictWalletsByYear.get(period).bilan())
 
         self.showData(dictBuySellOrders)
-        showAll(self.dataWeekFrame, False, "week.html")
+        #showAll(self.dataWeekFrame, False, "week.html")
         return result

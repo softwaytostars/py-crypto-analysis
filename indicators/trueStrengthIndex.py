@@ -8,10 +8,10 @@ def double_smooth(src, long, short):
     return emaFromPandaTa(first_smooth, short)
 
 
-def tsi(close, long=25, short=13, signal=13):
+def tsi(close, long=25, short=8, signal=13):
     pc = close - close.shift(1)
     double_smoothed_pc = double_smooth(pc, long, short)
     double_smoothed_abs_pc = double_smooth(abs(pc), long, short)
-    tsi_value = 100 * (double_smoothed_pc / double_smoothed_abs_pc)
+    tsi_value = 100.0 * (double_smoothed_pc / double_smoothed_abs_pc)
     ematsi = emaFromPandaTa(tsi_value, signal)
     return (tsi_value, ematsi)

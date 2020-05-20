@@ -2,10 +2,38 @@ from abc import ABC
 
 
 class Evaluator(ABC):
-    def __init__(self, dataWeekEvaluation, dataDayEvaluation, currentPrice):
+    def __init__(self):
+        self.dataWeekEvaluation = None
+        self.dataDayEvaluation = None
+        self.currentPrice = None
+
+    def initWithData(self, dataWeekEvaluation, dataDayEvaluation, currentPrice):
         self.dataWeekEvaluation = dataWeekEvaluation
         self.dataDayEvaluation = dataDayEvaluation
         self.currentPrice = currentPrice
+
+    def getOpenTimeDay(self, n):
+        return self.dataDayEvaluation.tail(n + 1).index.values[0]
+
+    def getOpenTimeWeek(self, n):
+        return self.dataWeekEvaluation.tail(n + 1).index.values[0]
+
+    def getStrDateOpenTimeDay(self, n):
+        return self.dataDayEvaluation['datetime'].tail(n + 1).values[0]
+
+    def getNWeekFromNDay(self, nDay):
+        intervalWeek = self.getOpenTimeWeek(0) - self.getOpenTimeWeek(1)
+        openTimeDay = self.getOpenTimeDay(nDay)
+
+        nWeek = 0
+        weekfound = False
+        while not weekfound:
+            openTimeWeek = self.getOpenTimeWeek(nWeek)
+            weekfound = openTimeWeek <= openTimeDay < openTimeWeek + intervalWeek
+            if weekfound:
+                return nWeek
+            nWeek += 1
+        return None
 
     def getLowerDataWeekPrice(self, n):
         return self.dataWeekEvaluation['Low'].tail(n + 1).values[0]
@@ -18,6 +46,9 @@ class Evaluator(ABC):
 
     def getHigherDataDayPrice(self, n):
         return self.dataDayEvaluation['High'].tail(n + 1).values[0]
+
+    def getCloseDataDayPrice(self, n):
+        return self.dataDayEvaluation['Close'].tail(n + 1).values[0]
 
     def getSARWeek(self, n):
         return self.dataWeekEvaluation['SAR'].tail(n + 1).values[0]
@@ -43,8 +74,17 @@ class Evaluator(ABC):
     def getCoppockDay(self, n):
         return self.dataDayEvaluation['coppock'].tail(n + 1).values[0]
 
-    def getStrengthADX(self, n):
+    def getStrengthADXWeek(self, n):
         return self.dataWeekEvaluation['adx'].tail(n + 1).values[0]
+
+    def getStrengthADXDay(self, n):
+        return self.dataDayEvaluation['adx'].tail(n + 1).values[0]
+
+    def getStrengthADXPosDay(self, n):
+        return self.dataDayEvaluation['pos_directional_indicator'].tail(n + 1).values[0]
+
+    def getStrengthADXNegDay(self, n):
+        return self.dataDayEvaluation['neg_directional_indicator'].tail(n + 1).values[0]
 
     def getTrueStrengthWeek(self, n):
         return self.dataWeekEvaluation['tsi'].tail(n + 1).values[0]
@@ -55,8 +95,23 @@ class Evaluator(ABC):
     def getTrueStrengthEMAWeek(self, n):
         return self.dataWeekEvaluation['ematsi'].tail(n + 1).values[0]
 
+    def getTrueStrengthEMADay(self, n):
+        return self.dataDayEvaluation['ematsi'].tail(n + 1).values[0]
+
     def getTauxStrengthDay(self, n):
         return self.dataDayEvaluation['tauxtsi'].tail(n + 1).values[0]
+
+    def getEcartTopBottomBollingerDay(self, n):
+        return self.getTopBollingerDay(n) - self.getBottomBollingerDay(n)
+
+    def getMidBollingerDay(self, n):
+        return self.dataDayEvaluation['bollinger_mid'].tail(n + 1).values[0]
+
+    def getTopBollingerDay(self, n):
+        return self.dataDayEvaluation['bollinger_top'].tail(n + 1).values[0]
+
+    def getBottomBollingerDay(self, n):
+        return self.dataDayEvaluation['bollinger_bottom'].tail(n + 1).values[0]
 
     def isTauxStrengthDayEnought(self, n):
         return self.getTauxStrengthDay(n) > 20
@@ -69,8 +124,14 @@ class Evaluator(ABC):
     def isGrowingBullishWeek(self, n):
         return self.getLowerDataWeekPrice(n) > self.getSARWeek(n) \
                and self.getAOWeek(n) > self.getAOWeek(n + 1) \
-               and (self.getMacdHistoWeek(n) > 0 or (self.getMacdHistoWeek(n) > self.getMacdHistoWeek(n+1))) \
+               and (self.getMacdHistoWeek(n) > 0 or (self.getMacdHistoWeek(n) > self.getMacdHistoWeek(n + 1))) \
                and self.getTrueStrengthWeek(n) > self.getTrueStrengthWeek(n + 1)
+
+    def isStillGrowingBullishWeek(self, n):
+        return self.getLowerDataWeekPrice(n) > self.getSARWeek(n) \
+               and self.getAOWeek(n) > self.getAOWeek(n + 1) \
+               and (self.getMacdHistoWeek(n) > 0 or (self.getMacdHistoWeek(n) > self.getMacdHistoWeek(n + 1))) \
+               and self.getTrueStrengthWeek(n) > self.getTrueStrengthEMAWeek(n)
 
     def increaseOrLightDecrease(self, previous, next, percent):
         return (next >= previous) or 100 * abs(next - previous) / abs(previous) < percent
@@ -78,18 +139,48 @@ class Evaluator(ABC):
     # pour pas sortir trop vite
     def isStillGrowingIfBullishSARDay(self, n):
         if self.isBullishDay(n):
-           return self.getCoppockDay(n) > self.getCoppockDay(n + 2) \
-                  and self.getTrueStrengthDay(n) > self.getTrueStrengthDay(n + 2)
+            return self.getCoppockDay(n) > self.getCoppockDay(n + 2) \
+                   and self.getTrueStrengthDay(n) > self.getTrueStrengthDay(n + 2)
         return True
 
     def isWorthToBuyInBearishWeek(self, n):
-        return 100*(self.getSARWeek(n)-self.currentPrice)/self.currentPrice > 100
+        return 100 * (self.getSARWeek(n) - self.currentPrice) / self.currentPrice > 100
 
     def isGrowingBullishDay(self, n):
-        return self.increaseOrLightDecrease(self.getCoppockDay(n + 1), self.getCoppockDay(n), 4) \
-               and self.getAODay(n) > self.getAODay(n + 1) \
-               and self.increaseOrLightDecrease(self.getTrueStrengthDay(n + 1), self.getTrueStrengthDay(n), 4) \
-               and self.isStillGrowingIfBullishSARDay(n)
+        return self.getAODay(n) > self.getAODay(n + 1) \
+               and self.priceCanGrowInDay(n)
+
+    def priceCanGrowInDay(self, n):
+        ARBITRARY_THREASHOLD = 2
+        diffpercent = 100 * (self.getTrueStrengthDay(n) / self.getTrueStrengthEMADay(n) - 1)
+        # return diffpercent > ARBITRARY_THREASHOLD \
+        #         or (abs(diffpercent) < 2 and (self.getTrueStrengthDay(n) > self.getTrueStrengthDay(n+1)))
+        #        # and ((self.getStrengthADXPosDay(n) >= self.getStrengthADXNegDay(n))
+        #        #      or (self.getStrengthADXNegDay(n)-self.getStrengthADXPosDay(n) < self.getStrengthADXNegDay(n+1)-self.getStrengthADXPosDay(n+1)))
+        return self.getTrueStrengthDay(n) > self.getTrueStrengthEMADay(n) and diffpercent > 2
+        # and  (self.getStrengthADXDay(n) > 30)
+
+
+    def priceIsGoingToGrowInDay(self, n):
+        ARBITRARY_THRESHOLD = 5
+        positiveAscension = (self.getStrengthADXPosDay(n) > self.getStrengthADXNegDay(n)) or \
+        (self.getStrengthADXPosDay(n) > self.getStrengthADXPosDay(n + 2) and self.getStrengthADXNegDay(n) < self.getStrengthADXNegDay(n + 2))
+
+        ratiodiff = 100*abs((self.getTrueStrengthDay(n) - self.getTrueStrengthEMADay(n))/self.getTrueStrengthEMADay(n))
+
+        return self.getTrueStrengthDay(n) > self.getTrueStrengthDay(n + 1) \
+                and self.getTrueStrengthDay(n + 1) > self.getTrueStrengthDay(n + 2) \
+                and abs(self.getTrueStrengthDay(n) - self.getTrueStrengthEMADay(n)) < abs(self.getTrueStrengthDay(n + 1) - self.getTrueStrengthEMADay(n + 1)) \
+                and positiveAscension \
+                and ratiodiff < ARBITRARY_THRESHOLD
+
+    def trueStrengthDayDecrease(self, n):
+        return self.getTrueStrengthDay(n) < self.getTrueStrengthDay(n + 1)
+
+    def isBecomingTrueStrengthBullishDayUnderBullishWeek(self, n):
+        return self.getTrueStrengthDay(n) >= self.getTrueStrengthDay(n + 1) \
+               and self.getStrengthADXPosDay(n) > self.getStrengthADXNegDay(n)\
+               and self.isBullishWeek(n)
 
     def strengthIsIncreasingWeek(self, n):
         # soit le strength augmente, soit il se stabilise après une baisse
@@ -106,7 +197,7 @@ class Evaluator(ABC):
             i += 1
         return i
 
-    def isBullishDayOrFarFromBeginBearishDay(self, n):
-        if self.isBullishDay(n):
-            return True
-        return self.nDaysSinceStopBullishDay(n) > 4
+    # def isBullishDayOrFarFromBeginBearishDay(self, n):
+    #     if self.isBullishDay(n):
+    #         return True
+    #     return self.nDaysSinceStopBullishDay(n) > 4

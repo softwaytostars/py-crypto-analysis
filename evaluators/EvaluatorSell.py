@@ -55,8 +55,11 @@ class EvaluatorSell(Evaluator):
                 return Evaluation(1, currentPrice)
         return Evaluation(0, currentPrice)
 
+    def priceCannotGrowMoreInDay(self):
+        return self.priceCanGrowInDay(1) and not self.priceCanGrowInDay(0)
+
     def evaluateSell(self):
-        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-04-05T00:00:00.000000000":
+        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-07-16T00:00:00.000000000":
             print('debug')
         #tsi est negatif, pas la peine de considerer la vente
         if self.getTrueStrengthWeek(0) < -3:
@@ -66,6 +69,8 @@ class EvaluatorSell(Evaluator):
             # si en bullish week, on vend seulement si plus growing bullish (ameriorer en utilisant momentum week)
             if self.isGrowingBullishWeek(1) and not self.isGrowingBullishWeek(0):
                 return Evaluation(1, self.currentPrice)
+            # elif self.priceCannotGrowMoreInDay():
+            #     return Evaluation(1, self.currentPrice)
             else:
                 return Evaluation(0, self.currentPrice)
         else:
@@ -73,7 +78,7 @@ class EvaluatorSell(Evaluator):
             if self.isBullishWeek(1):
                 return Evaluation(1, self.currentPrice)
             # si on est en bearish week et qu'on a de la currency, il faut vendre dès qu'on est plus en bullish day
-            if self.isGrowingBullishDay(1) and not self.isGrowingBullishDay(0):
+            if self.priceCannotGrowMoreInDay():
                 return Evaluation(1, self.currentPrice)
 
         return Evaluation(0.5, self.currentPrice)

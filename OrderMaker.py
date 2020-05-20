@@ -23,16 +23,19 @@ class OrderMaker(object):
     def __init__(self, wallet):
         self.wallet = wallet
         self.orders = []
+        self.BINANCE_TAX_PERCENT = 0.1
 
     def __onOrderExecuted__(self, symbol, price, side, amount):
         (fromcurr, tocurr) = getFromToCurrencies(symbol)
         # consider as executed for sell for not consider the amount
         # for buy do not consider as yours for now
         if side == Side.SELL:
+            price = price * (1 - self.BINANCE_TAX_PERCENT/100)
             self.wallet.removeFromWallet(fromcurr, amount)
             amountInToCurrency = amount * price
             self.wallet.addToWalletWithOrigin(tocurr, symbol, price, amountInToCurrency)
         else:
+            price = price * (1 + self.BINANCE_TAX_PERCENT / 100)
             amountInFromCurrency = amount / price
             self.wallet.addToWalletWithOrigin(fromcurr, symbol, price, amountInFromCurrency)
             self.wallet.removeFromWallet(tocurr, amount)

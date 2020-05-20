@@ -11,7 +11,9 @@ class TestSimulator(TestCase):
         wallet.addToWalletWithoutOrigin('USDT', 1)
         # wallet.addToWalletWithoutOrigin('BTC', 1)
         result = simulator.runSimu(wallet)
-        self.assertTrue(0, wallet.meanCostOrigin('BTC'))
+        self.assertTrue(1.266 < result[0] < 1.267)
+        self.assertTrue(3.054 < result[1] < 3.055)
+        self.assertTrue(2.039 < result[2] < 2.040)
 
     def test_simulatorETHUSDT(self):
         simulator = Simulator(['ETHUSDT'])

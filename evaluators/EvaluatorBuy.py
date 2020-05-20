@@ -69,22 +69,26 @@ class EvaluatorBuy(Evaluator):
 
     def evaluateBuy(self):
 
-        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2020-01-06T00:00:00.000000000":
+        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-04-12T00:00:00.000000000":
+            print('debug')
+        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-04-13T00:00:00.000000000":
+            print('debug')
+        if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-02-13T00:00:00.000000000":
             print('debug')
 
-        if self.getStrengthADX(0) < 15:
+        if self.getStrengthADXWeek(0) < 15:
             return Evaluation(0, self.currentPrice)
 
         # if not self.isTauxStrengthDayEnought(0) :
         #     return Evaluation(0, self.currentPrice)
 
-
         # si on entre toute juste en bullish week growing, faut acheter
         if self.isGrowingBullishWeek(0) and not self.isGrowingBullishWeek(1):
             return Evaluation(1, self.currentPrice)
+        # if self.isBullishWeek(0) and self.isBecomingTrueStrengthBullishDayUnderBullishWeek(0):
+        #     return Evaluation(1, self.currentPrice)
+
         # if on est en bearish week mais qu'on entre en bullish day, faut acheter
-        if not self.isBullishWeek(0) and self.isWorthToBuyInBearishWeek(0) \
-                and self.isGrowingBullishDay(0) and self.isBullishDayOrFarFromBeginBearishDay(0):
+        if not self.isBullishWeek(0)  and self.isGrowingBullishDay(0):
             return Evaluation(1, self.currentPrice)
         return Evaluation(0, self.currentPrice)
-

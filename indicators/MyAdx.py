@@ -23,5 +23,5 @@ def adx(high, low, close, LWdilength, LWadxlength):
 
 
 def ADXStrength(high, low, close):
-    ADX = adx(high, low, close, 9, 8)
+    ADX = adx(high, low, close, 14, 14)
     return (ADX - 15) * 2.5
