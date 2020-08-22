@@ -37,8 +37,8 @@ class AlgoTrading(object):
 
         # determine evaluation buy/sell for reach symbol
         for symbol in self.allSymbols:
-            dictEvalBuy[symbol] = self.evaluatorHandler.evaluateBuy()
-            dictEvalSell[symbol] = self.evaluatorHandler.evaluateSell()
+            dictEvalBuy[symbol] = self.evaluatorHandler.evaluationProbaBuy()
+            dictEvalSell[symbol] = self.evaluatorHandler.evaluationProbaSell()
             # what can we buy ?
             (fromcurr, tocurr) = getFromToCurrencies(symbol)
             # should sell if probability is greater than 70% (# parametre à optimiser)

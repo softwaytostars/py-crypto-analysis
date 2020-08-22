@@ -1,11 +1,10 @@
 from math import pi
 from bokeh.plotting import figure, show, output_notebook, output_file
 import IPython
-
+import pandas as pd
 
 def showAll(df, withbuysell, filename):
     output_notebook()
-
     def get_candlestick_width(datetime_interval):
         if datetime_interval == 'minute':
             return 30 * 60 * 1000  # half minute in ms
@@ -23,10 +22,11 @@ def showAll(df, withbuysell, filename):
     p = figure(plot_width=1000, title=title)
 
     # plot macd strategy
-    p.line(df.index, 0, color='black')
-    p.line(df.index, 20, color='black')
+    p.line(df.datetime, 0, color='black')
+    p.line(df.datetime, 20, color='black')
     #p.line(df.index, 5000+df.tsi, color='blue')
-    p.line(df.index, df.adx, color='blue')
+    p.line(df.datetime, df.tsi, color='blue')
+    p.line(df.datetime, df.ematsi, color='red')
     # p.line(df.index, df.macd_signal, color='orange')
     # p.vbar(x=df.index, bottom=[
     #     0 for _ in df.index], top=df.ao, width=4, color="purple")
@@ -37,10 +37,10 @@ def showAll(df, withbuysell, filename):
     # p.line(df.index, df.boll_lb, color="green")
 
     #plot SAR
-    p.diamond(df.index, df.SAR, size=4,
+    p.diamond(df.datetime, df.SAR, size=4,
                  color="#1C9099", line_width=2)
     # plot candlesticks
-    p.line(df.index, df.Close, color='black')
+    p.line(df.datetime, df.Close, color='black')
     candlestick_width = get_candlestick_width('week')
     # p.segment(df.index, df.High,
     #           df.index, df.Low, color="black")

@@ -76,7 +76,7 @@ class EvaluatorBuy(Evaluator):
         if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-02-13T00:00:00.000000000":
             print('debug')
 
-        if self.getStrengthADXWeek(0) < 15:
+        if self.getDMIADXWeek(0) < 15:
             return Evaluation(0, self.currentPrice)
 
         # if not self.isTauxStrengthDayEnought(0) :

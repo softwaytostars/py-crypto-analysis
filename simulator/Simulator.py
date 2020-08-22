@@ -81,6 +81,7 @@ class Simulator(object):
         algo = AlgoTrading(self.allSymbols, wallet)
 
         dictBuySellOrders = {'opentime': [],
+                             'datetime': [],
                              'Open': [],
                              'Close': [],
                              'buy': [],
@@ -92,6 +93,7 @@ class Simulator(object):
                              'macd_signal': [],
                              'tauxtsi': [],
                              'tsi': [],
+                             'ematsi': [],
                              'adx': []
                              }
 
@@ -117,6 +119,7 @@ class Simulator(object):
                 if self.dataWeekFrame.iloc[(self.dataWeekFrame.index.get_level_values('opentime') == lastweekopentime)][
                     'ao'].isnull().values[0]:
                     dictBuySellOrders['opentime'].append(lastdayopentime)
+                    dictBuySellOrders['datetime'].append(dataForDay['datetime'].values[0])
                     dictBuySellOrders['Close'].append(lastCloseprice)
                     dictBuySellOrders['Open'].append(lastOpenprice)
                     dictBuySellOrders['sell'].append(-100)
@@ -128,6 +131,7 @@ class Simulator(object):
                     dictBuySellOrders['macd_signal'].append(-100)
                     dictBuySellOrders['tauxtsi'].append(-100)
                     dictBuySellOrders['tsi'].append(-100)
+                    dictBuySellOrders['ematsi'].append(-100)
                     dictBuySellOrders['adx'].append(-100)
                     continue
 
@@ -158,6 +162,7 @@ class Simulator(object):
                 # self.assertTrue(len(buyOrders) <= 1)
                 # self.assertTrue(len(sellOrders) <= 1)
                 dictBuySellOrders['opentime'].append(lastdayopentime)
+                dictBuySellOrders['datetime'].append(dataForDay['datetime'].values[0])
                 dictBuySellOrders['Close'].append(lastCloseprice)
                 dictBuySellOrders['Open'].append(lastOpenprice)
                 dictBuySellOrders['SAR'].append(dataForDay['SAR'].values[0])
@@ -167,6 +172,7 @@ class Simulator(object):
                 dictBuySellOrders['macd_signal'].append(dataForDay['macd_signal'].values[0])
                 dictBuySellOrders['tauxtsi'].append(dataForDay['tauxtsi'].values[0])
                 dictBuySellOrders['tsi'].append(dataForDay['tsi'].values[0])
+                dictBuySellOrders['ematsi'].append(dataForDay['ematsi'].values[0])
                 dictBuySellOrders['adx'].append(dataForDay['adx'].values[0])
                 if len(buyOrders) >= 1:
                     dictBuySellOrders['buy'].append(buyOrders[0].getPrice())

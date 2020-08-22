@@ -62,7 +62,7 @@ class EvaluatorSell(Evaluator):
         if str(self.dataDayEvaluation['datetime'].tail(1).values[0]) == "2018-07-16T00:00:00.000000000":
             print('debug')
         #tsi est negatif, pas la peine de considerer la vente
-        if self.getTrueStrengthWeek(0) < -3:
+        if self.getTSIWeek(0) < -3:
             return Evaluation(0, self.currentPrice)
 
         if self.isBullishWeek(0):
