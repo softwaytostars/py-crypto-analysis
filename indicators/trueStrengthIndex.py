@@ -1,5 +1,3 @@
-from ta.utils import ema
-
 from indicators.ema import emaFromPandaTa
 
 

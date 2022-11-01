@@ -1,12 +1,11 @@
 from abc import ABC, abstractmethod
+
 import pandas as pd
 
 from binance.client import Client
-import bitstamp.client
-from stockstats import StockDataFrame
 from tapy import Indicators
 
-from indicators.MyAdx import ADXStrength
+from Utils import load_properties_from_file
 from indicators.adx import adx, average_directional_movement_index
 from indicators.coppock import coppock
 from indicators.psar import psar, sar
@@ -15,13 +14,14 @@ from ta.trend import ADXIndicator
 from indicators.trueStrengthIndex import tsi
 
 
+def __convert_to_str__(date):
+    return None if date is None else str(date)
+
 class DataRetriever(ABC):
     def __init__(self, symbolsBinance):
-        self.clientBinance = Client('wCIy0XKixL1ykrcy0c2fXkjmk4ccnJ11Z5t7OiLiu5UFhASTINTNsPJz0iVvNFKa',
-                                    'kVPKJc55SXotegHkNkyQoDIfMuhZTTAOOxmwTYt6XbCNBkaggan9OIwU6OpH2UzK')
-
-        # 'https://api.binance.com/api/v3/klines'
-        self.clientBitStamp = bitstamp.client.Public()
+        props = load_properties_from_file('credentials.properties')
+        self.clientBinance = Client(props['BINANCE_API_KEY'],
+                                    props['BINANCE_API_SECRET'])
         self.symbolsBinance = symbolsBinance
 
     def retrieveAllDataWeekFor(self, startDateTime, endDateTime):
@@ -33,13 +33,16 @@ class DataRetriever(ABC):
     def __retrieveAllDataFrom__(self, interval, startDateTime, endDateTime):
         listdataframes = []
         for symbol in self.symbolsBinance:
-            listdataframes.append(self.__historicDataFrameForSymbol__(interval, symbol, startDateTime, endDateTime))
+            listdataframes.append(self.__historicDataFrameForSymbol__(interval,
+                                                                      symbol,
+                                                                      __convert_to_str__(startDateTime),
+                                                                      __convert_to_str__(endDateTime)))
         result = pd.concat(listdataframes)
         result.sort_index(inplace=True)
         return result
 
     def __historicDataFrameForSymbol__(self, interval, symbol, startDateTime, endDateTime):
-        klines = self.clientBinance.get_historical_klines(symbol, interval, str(startDateTime), str(endDateTime), 1000)
+        klines = self.clientBinance.get_historical_klines(symbol, interval, startDateTime, endDateTime, 1000)
         df = pd.DataFrame(klines)
         df.columns = ["opentime",
                       "Open",
@@ -92,17 +95,16 @@ class DataRetriever(ABC):
         df['ematsi'] = tupleTSI[1]
 
         tsibefore = tupleTSI[0].shift(1)
-        df['tauxtsi'] = 100*(tupleTSI[0] - tsibefore)/abs(tsibefore)
+        df['tauxtsi'] = 100 * (tupleTSI[0] - tsibefore) / abs(tsibefore)
 
         df.set_index('opentime', inplace=True)
 
-        df.to_csv(symbol+".csv", index=True)
+        df.to_csv(symbol + ".csv", index=True)
 
         # df.set_index('opentime', inplace=True)
         # df.reset_index(inplace=True)
         # df.set_index(["opentime", "symbol"], inplace=True)
         return df
 
-    @abstractmethod
-    def getCurrentPrice(self, symbol, opentime):
-        return float(self.clientBinance.get_avg_price(symbol='BNBBTC')['price'])
+    def get_current_price(self, symbol, opentime):
+        return float(self.clientBinance.get_avg_price(symbol=symbol)['price'])

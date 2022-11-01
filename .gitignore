@@ -1,2 +1,6 @@
 .idea
 venv
+tests/*.html
+tests/*.csv
+tests/*.html
+credentials.properties

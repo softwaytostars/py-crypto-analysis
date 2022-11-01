@@ -19,17 +19,16 @@ def showAll(df, withbuysell, filename):
     dec = df.Open > df.Close
     title = '%s datapoints from %s to %s for %s and %s from %s with MACD strategy' % (
         'week', 'a', 'b', 'c', 'to_symbol', 'exchange')
-    p = figure(plot_width=1000, title=title)
+    p = figure(width=2000, title=title)
 
     # plot macd strategy
     p.line(df.datetime, 0, color='black')
     p.line(df.datetime, 20, color='black')
     #p.line(df.index, 5000+df.tsi, color='blue')
-    p.line(df.datetime, df.tsi, color='blue')
-    p.line(df.datetime, df.ematsi, color='red')
+    p.line(df.datetime, 1000*df.tsi, color='blue')
+    p.line(df.datetime, 1000*df.ematsi, color='red')
     # p.line(df.index, df.macd_signal, color='orange')
-    # p.vbar(x=df.index, bottom=[
-    #     0 for _ in df.index], top=df.ao, width=4, color="purple")
+    p.vbar(x=df.index, bottom=[0 for _ in df.index], top=10*df.ao, width=4, color="purple")
 
     # plot boll strategy
     # p.line(df.index, df.boll, color='blue')

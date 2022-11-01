@@ -2,8 +2,8 @@ from unittest import TestCase
 
 from tapy import Indicators
 
+from DataRetriever import DataRetriever
 from Graphic import showAll
-from SimulationDataRetriever import SimulationDataRetriever
 from Wallet import Wallet
 from algo.AlgoTrading import AlgoTrading
 import pandas as pd
@@ -82,40 +82,51 @@ class TestAlgoTrading(TestCase):
 
     def test_fit(self):
         allSymbols = ["BTCUSDT"]
-        dataRetriever = SimulationDataRetriever(allSymbols)
-        dataRetriever.retrieveAllDataWeekFrom("1 Jan, 2015")
+        dataRetriever = DataRetriever(allSymbols)
+        dataRetriever.retrieveAllDataWeekFor("1 Jan, 2015", None)
         self.fit(dataRetriever.allDataFrame)
 
     def test_compute(self):
-        allSymbols = ["BTCUSDT"]
-        dataRetriever = SimulationDataRetriever(allSymbols)
-        dataRetriever.retrieveAllDataWeekFrom("1 Jan, 2015")
+        all_symbols = ["BTCUSDT"]
+        data_retriever = DataRetriever(all_symbols)
+        data_week_frame = data_retriever.retrieveAllDataWeekFor("1 Jan, 2015", None)
         wallet = Wallet()
-        wallet.addToWalletWithoutOrigin('USDT', 1)
-        walletorig = wallet.copy()
+        wallet.add_to_wallet_without_origin('USDT', 1)
+        wallet_orig = wallet.copy()
 
-        algo = AlgoTrading(dataRetriever, dataRetriever.allDataWeekFrame, allSymbols, wallet)
+        algo = AlgoTrading(all_symbols, wallet)
 
         dictBuySellOrders = {'opentime': [],
                              'buy': [],
                              'sell': []
                              }
 
-        weekOpentimevalues = dataRetriever.allDataWeekFrame.index.get_level_values('opentime')
-        startSimu = 50
+        week_opentime_values = data_week_frame.index.get_level_values('opentime')
+        interval_week = week_opentime_values[1] - week_opentime_values[0]
+
         start = 0
-        for opentime in weekOpentimevalues:
+        for open_time in week_opentime_values:
             start += 1
-            if start <= startSimu:
-                dictBuySellOrders['opentime'].append(opentime)
+            if start <= 50:
+                dictBuySellOrders['opentime'].append(open_time)
                 dictBuySellOrders['sell'].append(0)
                 dictBuySellOrders['buy'].append(0)
                 continue
 
-            (buyOrders, sellOrders) = algo.compute(opentime)
+            # retrieve the 10 last weeks datas
+            start_data_open_time = open_time - 10 * interval_week
+            data_last_weeks = data_week_frame.loc[
+                (data_week_frame.index.get_level_values('opentime') <= open_time) &
+                (data_week_frame.index.get_level_values('opentime') > start_data_open_time)]
+
+            data_last_days = data_retriever.retrieveAllDataDayFor(start_data_open_time, open_time)
+            currentData = data_last_weeks.loc[data_last_weeks.index.get_level_values('opentime') == open_time]
+            current_price = currentData['Open'].tail(1).values[0]
+            current_date = str(currentData['datetime'].tail(1).values[0])
+            (buyOrders, sellOrders) = algo.compute(data_last_weeks, data_last_days, current_price, current_date)
             self.assertTrue(len(buyOrders) <= 1)
             self.assertTrue(len(sellOrders) <= 1)
-            dictBuySellOrders['opentime'].append(opentime)
+            dictBuySellOrders['opentime'].append(open_time)
             if len(buyOrders) >= 1:
                 dictBuySellOrders['buy'].append(buyOrders[0].getPrice())
             else:
@@ -125,86 +136,13 @@ class TestAlgoTrading(TestCase):
             else:
                 dictBuySellOrders['sell'].append(0)
 
-            algo.executeOrders()
-            print('wallet :')
-            print(wallet)
+            algo.execute_orders()
 
         # Bilan:
-        for curr in (set(walletorig.currentStock.keys()) & set(wallet.currentStock.keys())):
-            amountorig = walletorig.amountForCurrency(curr)
-            currentamount = wallet.amountForCurrency(curr)
+        for curr in (set(wallet_orig.currentStock.keys()) & set(wallet.currentStock.keys())):
+            amountorig = wallet_orig.amount_for_currency(curr)
+            currentamount = wallet.amount_for_currency(curr)
             print("currency : % s, Before : % 5.7f, After : % 5.7f, Diff % 2.2f " % (
                 curr, amountorig, currentamount, 100 * (currentamount - amountorig) / amountorig))
 
-        # self.showData(dataRetriever.allDataFrame, dictBuySellOrders)
-
-    def getDataWeekFrame(self, startTime, endTime):
-        return dataRetriever.retrieveAllDataDayFor(startTime,endTime)
-
-    def test_compute2(self):
-        allSymbols = ["BTCUSDT"]
-        dataRetriever = SimulationDataRetriever(allSymbols)
-        dataWeekFrame = dataRetriever.retrieveAllDataWeekFor("1 Jan, 2017", '')
-        wallet = Wallet()
-        wallet.addToWalletWithoutOrigin('USDT', 1)
-        walletorig = wallet.copy()
-
-        algo = AlgoTrading(allSymbols, wallet)
-
-        dictBuySellOrders = {'opentime': [],
-                             'buy': [],
-                             'sell': []
-                             }
-
-        weekOpentimevalues = dataWeekFrame.index.get_level_values('opentime')
-        intervalweek = weekOpentimevalues[1] - weekOpentimevalues[0] #604800000
-        intervalDay = 86400000
-        startSimu = 50
-        start = 0
-        allDataDayFrame = dataRetriever.retrieveAllDataDayFor(weekOpentimevalues[0], '')
-        for lastweekopentime in weekOpentimevalues:
-            allDataDayFrame = dataRetriever.retrieveAllDataDayFor(lastweekopentime - 5 * intervalweek,
-                                                                       lastweekopentime + intervalweek)
-            dayOpentimevalues = allDataDayFrame.index.get_level_values('opentime')
-            for lastdayopentime in dayOpentimevalues:
-                if lastdayopentime < lastweekopentime:
-                    continue
-                start += 1
-                if start <= startSimu:
-                    dictBuySellOrders['opentime'].append(lastdayopentime)
-                    dictBuySellOrders['sell'].append(0)
-                    dictBuySellOrders['buy'].append(0)
-                    continue
-
-                # ce sont les providers qui donneront ca
-                dataWeekEvaluation = dataWeekFrame.loc[
-                    dataWeekFrame.index.get_level_values('opentime') <= lastweekopentime]
-                dataDayEvaluation = allDataDayFrame.loc[
-                    allDataDayFrame.index.get_level_values('opentime') <= lastdayopentime]
-
-                # calcul de l'algo
-                (buyOrders, sellOrders) = algo.compute(dataWeekEvaluation, dataDayEvaluation, lastweekopentime,
-                                                       lastdayopentime)
-
-                self.assertTrue(len(buyOrders) <= 1)
-                self.assertTrue(len(sellOrders) <= 1)
-                dictBuySellOrders['opentime'].append(lastdayopentime)
-                if len(buyOrders) >= 1:
-                    dictBuySellOrders['buy'].append(buyOrders[0].getPrice())
-                else:
-                    dictBuySellOrders['buy'].append(0)
-                if len(sellOrders) >= 1:
-                    dictBuySellOrders['sell'].append(sellOrders[0].getPrice())
-                else:
-                    dictBuySellOrders['sell'].append(0)
-
-                algo.executeOrders()
-            print('wallet :')
-            print(wallet)
-
-        # Bilan:
-        for curr in (set(walletorig.currentStock.keys()) & set(wallet.currentStock.keys())):
-            amountorig = walletorig.amountForCurrency(curr)
-            currentamount = wallet.amountForCurrency(curr)
-            print("currency : % s, Before : % 5.7f, After : % 5.7f, Diff % 2.2f " % (
-                curr, amountorig, currentamount, 100 * (currentamount - amountorig) / amountorig))
+        # self.showData(data_retriever.allDataFrame, dictBuySellOrders)

@@ -1,12 +1,8 @@
-from tapy import Indicators
-
 from Model import Side
-from OrderMaker import OrderMaker
-from Utils import getFromToCurrencies, sortByProfit, profitForSell, getFromCurrency, sortByProba, getToCurrency
-from evaluators.EvaluatorBuy import EvaluatorBuy
+from algo.OrderMaker import OrderMaker
+from Utils import getFromToCurrencies, sortByProfit, getFromCurrency, sortByProba, getToCurrency, profitForSell, \
+    load_properties_from_file
 from evaluators.EvaluatorHandler import EvaluatorHandler
-from evaluators.EvaluatorSell import EvaluatorSell
-from indicators.psar import psar
 
 
 class AlgoTrading(object):
@@ -15,77 +11,72 @@ class AlgoTrading(object):
         self.wallet = wallet
         self.allDataDayFrame = None
         self.allDataWeekFrame = None
-        self.ordermaker = OrderMaker(wallet)
+        taxes = load_properties_from_file('binance_config.txt')
+        self.order_maker = OrderMaker(wallet, taxes)
         self.periodsToUseForEvaluation = 30
-        self.intervalweek = 0
+        self.interval_week = 0
+        # todo pass strategy option
         self.evaluatorHandler = EvaluatorHandler()
 
-    def compute(self, dataWeekEvaluation, dataDayEvaluation, currentPrice, strCurrentDate):
-        self.evaluatorHandler.initWithData(dataWeekEvaluation, dataDayEvaluation, currentPrice)
+    def compute(self, data_week_evaluation, data_day_evaluation, current_price, str_current_date):
+        self.evaluatorHandler.initWithData(data_week_evaluation, data_day_evaluation, current_price)
 
-        if strCurrentDate == "2019-08-02T00:00:00.000000000":
-            print('debug')
+        sell_orders = []
+        buy_orders = []
 
-        sellOrders = []
-        buyOrders = []
+        dict_eval_buy = {}
+        dict_eval_sell = {}
+        buyable_now = []
+        cannot_buy = []
+        will_be_sold = []
 
-        dictEvalBuy = {}
-        dictEvalSell = {}
-        buyablenow = []
-        cannotbuy = []
-        willbesold = []
-
-        # determine evaluation buy/sell for reach symbol
+        # determine evaluation buy/sell for each symbol
         for symbol in self.allSymbols:
-            dictEvalBuy[symbol] = self.evaluatorHandler.evaluationProbaBuy()
-            dictEvalSell[symbol] = self.evaluatorHandler.evaluationProbaSell()
+            dict_eval_buy[symbol] = self.evaluatorHandler.evaluateBuy() #. evaluationProbaBuy()
+            dict_eval_sell[symbol] = self.evaluatorHandler.evaluateSell() # .evaluationProbaSell()
             # what can we buy ?
-            (fromcurr, tocurr) = getFromToCurrencies(symbol)
-            # should sell if probability is greater than 70% (# parametre à optimiser)
-            shouldBeSold = dictEvalSell.get(symbol).proba > 0.70
-            # should buy if probability is greater than (# parametre à optimiser)
-            shouldBeBought = dictEvalBuy.get(symbol).proba > 0.60
-            # on veut revendre dans la même currency d'achat à moins que ce soit pour acheter quelque chose qu'on ne peut
-            # pas avoir mais ca sera plus + tard (cf gestion cannotbuy)
-            # and currentStock.get(fromcurr).frompairorigin == symbol
-            if shouldBeSold and self.wallet.amountForCurrency(fromcurr) > 0:
-                willbesold.append(symbol)
-            if shouldBeBought:
-                if self.wallet.amountForCurrency(tocurr) > 0:
-                    buyablenow.append(symbol)
-                else:
-                    cannotbuy.append(symbol)
+            (from_curr, to_curr) = getFromToCurrencies(symbol)
+            # should sell if probability is greater than 60% (# to be optimized)
+            should_be_sold = dict_eval_sell.get(symbol).proba > 0.60
+            # should buy if probability is greater than (# to be optimized)
+            should_be_bought = dict_eval_buy.get(symbol).proba > 0.70
 
-        # put orders (priority to sell orders to make profit now) on veut revendre dans la même currency d'achat à moins
-        # que ce soit pour acheter quelque chose qu'on ne peut pas avoir mais ca sera plus + tard (cf gestion )cannotbuy
-        sortByProfit(willbesold, dictEvalSell, self.wallet)
-        for symbol in willbesold:
-            if True:
-                # if profitForSell(symbol, dictEvalSell, self.wallet) > 0:
-                fromcurr = getFromCurrency(symbol)
-                sellorder = self.ordermaker.makeOrder(symbol, dictEvalSell[symbol].price, Side.SELL,
-                                                      self.wallet.amountForCurrency(fromcurr))
-                if sellorder is not None:
-                    print(strCurrentDate)
-                    print(repr(sellorder))
-                    sellOrders.append(sellorder)
+            if should_be_sold and self.wallet.amount_for_currency(from_curr) > 0:
+                will_be_sold.append(symbol)
+            if should_be_bought:
+                if self.wallet.amount_for_currency(to_curr) > 0:
+                    buyable_now.append(symbol)
+                else:
+                    cannot_buy.append(symbol)
+
+        # put orders (priority to sell orders to make profit right now)
+        sortByProfit(will_be_sold, dict_eval_sell, self.wallet)
+        for symbol in will_be_sold:
+            profit = profitForSell(symbol, dict_eval_sell, self.wallet)
+            if profit > 0:
+                from_curr = getFromCurrency(symbol)
+                sell_order = self.order_maker.makeOrder(symbol,
+                                                        dict_eval_sell[symbol].price,
+                                                        Side.SELL,
+                                                        self.wallet.amount_for_currency(from_curr))
+                if sell_order is not None:
+                    sell_orders.append(sell_order)
 
         # buy by priority depending on proba
-        sortByProba(buyablenow, dictEvalBuy)
-        sortByProba(cannotbuy, dictEvalBuy)
-        # for now, buy first what you can (we could optimize if proba cannotbuy much better. we would search what we can
-        # sell in order to buy)
-        for symbol in buyablenow:
-            tocurr = getToCurrency(symbol)
-            buyorder = self.ordermaker.makeOrder(symbol, dictEvalBuy[symbol].price, Side.BUY,
-                                                 self.wallet.amountForCurrency(tocurr))
-            if buyorder is not None:
-                print(strCurrentDate)
-                print(repr(buyorder))
-                buyOrders.append(buyorder)
+        sortByProba(buyable_now, dict_eval_buy)
+        sortByProba(cannot_buy, dict_eval_buy)
 
-        return buyOrders, sellOrders
+        for symbol in buyable_now:
+            to_curr = getToCurrency(symbol)
+            buy_order = self.order_maker.makeOrder(symbol,
+                                                   dict_eval_buy[symbol].price,
+                                                   Side.BUY,
+                                                   self.wallet.amount_for_currency(to_curr))
+            if buy_order is not None:
+                buy_orders.append(buy_order)
 
-    def executeOrders(self):
-        self.ordermaker.printOrders()
-        self.ordermaker.executeOrders()
+        return buy_orders, sell_orders
+
+    def execute_orders(self):
+        self.order_maker.printOrders()
+        self.order_maker.executeOrders()
